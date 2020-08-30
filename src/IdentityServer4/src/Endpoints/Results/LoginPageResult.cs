@@ -3,6 +3,7 @@
 
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using IdentityServer4.Hosting;
 using IdentityServer4.Validation;
@@ -12,7 +13,6 @@ using IdentityServer4.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using IdentityServer4.Stores;
 using IdentityServer4.Models;
-using System.Collections.Specialized;
 
 namespace IdentityServer4.Endpoints.Results
 {
@@ -65,7 +65,7 @@ namespace IdentityServer4.Endpoints.Results
             var returnUrl = context.GetIdentityServerBasePath().EnsureTrailingSlash() + Constants.ProtocolRoutePaths.AuthorizeCallback;
             if (_authorizationParametersMessageStore != null)
             {
-                var msg = new Message<NameValueCollection>(_request.Raw);
+                var msg = new Message<IDictionary<string, string[]>>(_request.Raw.ToFullDictionary());
                 var id = await _authorizationParametersMessageStore.WriteAsync(msg);
                 returnUrl = returnUrl.AddQueryString(Constants.AuthorizationParamsStore.MessageStoreIdParameterName, id);
             }

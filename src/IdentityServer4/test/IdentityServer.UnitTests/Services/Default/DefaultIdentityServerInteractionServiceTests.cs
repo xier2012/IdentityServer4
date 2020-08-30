@@ -22,7 +22,7 @@ namespace IdentityServer.UnitTests.Services.Default
 
         private IdentityServerOptions _options = new IdentityServerOptions();
         private MockHttpContextAccessor _mockMockHttpContextAccessor;
-        private MockMessageStore<EndSession> _mockEndSessionStore = new MockMessageStore<EndSession>();
+        private MockMessageStore<LogoutNotificationContext> _mockEndSessionStore = new MockMessageStore<LogoutNotificationContext>();
         private MockMessageStore<LogoutMessage> _mockLogoutMessageStore = new MockMessageStore<LogoutMessage>();
         private MockMessageStore<ErrorMessage> _mockErrorMessageStore = new MockMessageStore<ErrorMessage>();
         private MockConsentMessageStore _mockConsentStore = new MockConsentMessageStore();
@@ -129,7 +129,7 @@ namespace IdentityServer.UnitTests.Services.Default
                 Client = new Client { ClientId = "client" },
                 ValidatedResources = _resourceValidationResult
             };
-            await _subject.GrantConsentAsync(req, ConsentResponse.Denied, null);
+            await _subject.GrantConsentAsync(req, new ConsentResponse { Error = AuthorizationError.AccessDenied }, null);
         }
 
         [Fact]

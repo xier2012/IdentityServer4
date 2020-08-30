@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using IdentityServer4;
 using IdentityServer4.Models;
 
-namespace Host.Configuration
+namespace IdentityServerHost.Configuration
 {
     public static class ClientsConsole
     {
@@ -26,7 +26,18 @@ namespace Host.Configuration
                     ClientId = "client",
                     ClientSecrets = {new Secret("secret".Sha256())},
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
-                    AllowedScopes = {"api1", "api2.read_only", IdentityServerConstants.LocalApi.ScopeName}
+                    AllowedScopes = { "resource1.scope1", "resource2.scope1", IdentityServerConstants.LocalApi.ScopeName}
+                },
+                
+                ///////////////////////////////////////////
+                // Console Structured Scope Sample
+                //////////////////////////////////////////
+                new Client
+                {
+                    ClientId = "parameterized.client",
+                    ClientSecrets = {new Secret("secret".Sha256())},
+                    AllowedGrantTypes = GrantTypes.ClientCredentials,
+                    AllowedScopes = { "transaction" }
                 },
 
                 ///////////////////////////////////////////
@@ -46,9 +57,10 @@ namespace Host.Configuration
                             Type = IdentityServerConstants.SecretTypes.X509CertificateThumbprint
                         },
                     },
+                    
                     AccessTokenType = AccessTokenType.Jwt,
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
-                    AllowedScopes = {"api1", "api2.read_only"}
+                    AllowedScopes = { "resource1.scope1", "resource2.scope1" }
                 },
 
                 ///////////////////////////////////////////
@@ -72,8 +84,9 @@ namespace Host.Configuration
                                 "{'e':'AQAB','kid':'ZzAjSnraU3bkWGnnAqLapYGpTyNfLbjbzgAPbbW2GEA','kty':'RSA','n':'wWwQFtSzeRjjerpEM5Rmqz_DsNaZ9S1Bw6UbZkDLowuuTCjBWUax0vBMMxdy6XjEEK4Oq9lKMvx9JzjmeJf1knoqSNrox3Ka0rnxXpNAz6sATvme8p9mTXyp0cX4lF4U2J54xa2_S9NF5QWvpXvBeC4GAJx7QaSw4zrUkrc6XyaAiFnLhQEwKJCwUw4NOqIuYvYp_IXhw-5Ti_icDlZS-282PcccnBeOcX7vc21pozibIdmZJKqXNsL1Ibx5Nkx1F1jLnekJAmdaACDjYRLL_6n3W4wUp19UvzB1lGtXcJKLLkqB6YDiZNu16OSiSprfmrRXvYmvD8m6Fnl5aetgKw'}"
                         }
                     },
+                    
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
-                    AllowedScopes = {"api1", "api2.read_only"}
+                    AllowedScopes = { "resource1.scope1", "resource2.scope1" }
                 },
 
                 ///////////////////////////////////////////
@@ -84,7 +97,7 @@ namespace Host.Configuration
                     ClientId = "client.custom",
                     ClientSecrets = {new Secret("secret".Sha256())},
                     AllowedGrantTypes = {"custom", "custom.nosubject"},
-                    AllowedScopes = {"api1", "api2.read_only"}
+                    AllowedScopes = { "resource1.scope1", "resource2.scope1" }
                 },
 
                 ///////////////////////////////////////////
@@ -100,8 +113,7 @@ namespace Host.Configuration
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         "custom.profile",
-                        "api1",
-                        "api2.read_only"
+                        "resource1.scope1", "resource2.scope1"
                     }
                 },
 
@@ -118,8 +130,7 @@ namespace Host.Configuration
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Email,
-                        "api1",
-                        "api2.read_only"
+                        "resource1.scope1", "resource2.scope1"
                     }
                 },
 
@@ -140,8 +151,7 @@ namespace Host.Configuration
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
                         IdentityServerConstants.StandardScopes.Email,
-                        "api1",
-                        "api2.read_only"
+                        "resource1.scope1", "resource2.scope1"
                     }
                 },
                 ///////////////////////////////////////////
@@ -163,8 +173,7 @@ namespace Host.Configuration
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
                         IdentityServerConstants.StandardScopes.Email,
-                        "api1",
-                        "api2.read_only"
+                        "resource1.scope1", "resource2.scope1"
                     }
                 },
 
@@ -177,7 +186,7 @@ namespace Host.Configuration
                     ClientId = "roclient.reference",
                     ClientSecrets = {new Secret("secret".Sha256())},
                     AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
-                    AllowedScopes = {"api1", "api2.read_only"},
+                    AllowedScopes = { "resource1.scope1", "resource2.scope1" },
                     AccessTokenType = AccessTokenType.Reference
                 },
                 
@@ -194,14 +203,12 @@ namespace Host.Configuration
 
                     AllowOfflineAccess = true,
 
-                    AllowedCorsOrigins = { "http://localhost:5001" }, // JS test client only
-
                     AllowedScopes =
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
                         IdentityServerConstants.StandardScopes.Email,
-                        "api1", "api2.read_only", "api2.full_access"
+                        "resource1.scope1", "resource2.scope1"
                     }
                 }
             };

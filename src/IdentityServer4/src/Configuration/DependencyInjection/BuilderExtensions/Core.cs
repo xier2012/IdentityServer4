@@ -118,8 +118,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns></returns>
         public static IIdentityServerBuilder AddCoreServices(this IIdentityServerBuilder builder)
         {
-            builder.Services.AddTransient<SecretParser>();
-            builder.Services.AddTransient<SecretValidator>();
+            builder.Services.AddTransient<ISecretsListParser, SecretParser>();
+            builder.Services.AddTransient<ISecretsListValidator, SecretValidator>();
             builder.Services.AddTransient<ExtensionGrantValidator>();
             builder.Services.AddTransient<BearerTokenUsageValidator>();
             builder.Services.AddTransient<JwtRequestValidator>();
@@ -156,7 +156,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.Services.TryAddTransient<IProfileService, DefaultProfileService>();
             builder.Services.TryAddTransient<IConsentMessageStore, ConsentMessageStore>();
             builder.Services.TryAddTransient<IMessageStore<LogoutMessage>, ProtectedDataMessageStore<LogoutMessage>>();
-            builder.Services.TryAddTransient<IMessageStore<EndSession>, ProtectedDataMessageStore<EndSession>>();
+            builder.Services.TryAddTransient<IMessageStore<LogoutNotificationContext>, ProtectedDataMessageStore<LogoutNotificationContext>>();
             builder.Services.TryAddTransient<IMessageStore<ErrorMessage>, ProtectedDataMessageStore<ErrorMessage>>();
             builder.Services.TryAddTransient<IIdentityServerInteractionService, DefaultIdentityServerInteractionService>();
             builder.Services.TryAddTransient<IDeviceFlowInteractionService, DefaultDeviceFlowInteractionService>();
@@ -170,13 +170,13 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.Services.TryAddTransient<IEventSink, DefaultEventSink>();
             builder.Services.TryAddTransient<IUserCodeService, DefaultUserCodeService>();
             builder.Services.TryAddTransient<IUserCodeGenerator, NumericUserCodeGenerator>();
+            builder.Services.TryAddTransient<ILogoutNotificationService, LogoutNotificationService>();
             builder.Services.TryAddTransient<IBackChannelLogoutService, DefaultBackChannelLogoutService>();
-            builder.Services.TryAddTransient<IResourceValidator, ResourceValidator>();
+            builder.Services.TryAddTransient<IResourceValidator, DefaultResourceValidator>();
+            builder.Services.TryAddTransient<IScopeParser, DefaultScopeParser>();
 
             builder.AddJwtRequestUriHttpClient();
             builder.AddBackChannelLogoutHttpClient();
-            //builder.Services.AddHttpClient<BackChannelLogoutHttpClient>();
-            //builder.Services.AddHttpClient<JwtRequestUriHttpClient>();
 
             builder.Services.AddTransient<IClientSecretValidator, ClientSecretValidator>();
             builder.Services.AddTransient<IApiSecretValidator, ApiSecretValidator>();

@@ -194,8 +194,17 @@ namespace IdentityServer4.Services
 
             if (request.ValidatedRequest.Client.IncludeJwtId)
             {
-                claims.Add(new Claim(JwtClaimTypes.JwtId, CryptoRandom.CreateUniqueId(16)));
+                claims.Add(new Claim(JwtClaimTypes.JwtId, CryptoRandom.CreateUniqueId(16, CryptoRandom.OutputFormat.Hex)));
             }
+
+            if (request.ValidatedRequest.SessionId.IsPresent())
+            {
+                claims.Add(new Claim(JwtClaimTypes.SessionId, request.ValidatedRequest.SessionId));
+            }
+            
+            // iat claim as required by JWT profile
+            claims.Add(new Claim(JwtClaimTypes.IssuedAt, Clock.UtcNow.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64));
 
             var issuer = ContextAccessor.HttpContext.GetIdentityServerIssuerUri();
             var token = new Token(OidcConstants.TokenTypes.AccessToken)
@@ -205,6 +214,7 @@ namespace IdentityServer4.Services
                 Lifetime = request.ValidatedRequest.AccessTokenLifetime,
                 Claims = claims.Distinct(new ClaimComparer()).ToList(),
                 ClientId = request.ValidatedRequest.Client.ClientId,
+                Description = request.Description,
                 AccessTokenType = request.ValidatedRequest.AccessTokenType,
                 AllowedSigningAlgorithms = request.ValidatedResources.Resources.ApiResources.FindMatchingSigningAlgorithms()
             };
@@ -215,7 +225,7 @@ namespace IdentityServer4.Services
                 token.Audiences.Add(aud);
             }
 
-            if (Options.EmitLegacyResourceAudienceClaim)
+            if (Options.EmitStaticAudienceClaim)
             {
                 token.Audiences.Add(string.Format(IdentityServerConstants.AccessTokenAudience, issuer.EnsureTrailingSlash()));
             }
@@ -236,7 +246,7 @@ namespace IdentityServer4.Services
                     }
                 }
             }
-
+            
             return token;
         }
 

@@ -10,8 +10,8 @@ We thank those who [support](https://www.patreon.com/identityserver) IdentitySer
 
 ### Gold
 [Ritter Insurance Marketing](https://www.ritterim.com) ([@RitterIM](https://twitter.com/ritterim))   
-[Intuit](https://www.intuit.com) ([@IntuitDev](https://twitter.com/IntuitDev))  
 [ExtranetUserManager](https://www.extranetusermanager.com) ([@eumgr](https://twitter.com/eumgr))  
+[Knab](https://www.knab.nl/) ([@knab_nl](https://twitter.com/knab_nl))  
 
 ### Silver
 
@@ -28,7 +28,6 @@ Justify ([@justify_legal](https://twitter.com/justify_legal))
 Khalid Abuhakmeh ([@buhakmeh](https://twitter.com/buhakmeh))  
 Rasika Weliwita ([@rasikaweliwita](https://twitter.com/rasikaweliwita))  
 Arun David Shelly  
-Reece Williams ([@AnEmptyReece](https://twitter.com/AnEmptyReece))  
 Alexander Zeitler ([@alexzeitler_](https://twitter.com/alexzeitler_))  
 Tobias Höft ([@tobiashoeft](https://twitter.com/tobiashoeft))  
 Gusztav Varga ([@gusztavvargadr](https://twitter.com/gusztavvargadr))  
@@ -36,14 +35,11 @@ William Grow
 James Roberts  
 Chris Simmons ([@netchrisdotcom](https://twitter.com/netchrisdotcom))  
 Shawn Wildermuth  
-Thomas C  
-Ben	Cull  
 Johan Boström ([@zarx](https://twitter.com/zarx))  
 Chris White  
 Albert ([@DerAlbert](https://twitter.com/DerAlbert))  
 Hugo Biarge ([@hbiarge](https://twitter.com/hbiarge))  
 Ibrahim Šuta ([@ibrahimsuta](https://twitter.com/ibrahimsuta))  
-Dave Noderer  ([@davenoderer](https://twitter.com/davenoderer))  
 VIJAYA PAL NALLALA  
 Martijn Boland  
 Giuseppe Turitto  

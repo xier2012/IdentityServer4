@@ -30,6 +30,7 @@ namespace IdentityServer4.Validation
         private readonly IResourceValidator _resourceValidator;
         private readonly IResourceStore _resourceStore;
         private readonly ITokenValidator _tokenValidator;
+        private readonly IRefreshTokenService _refreshTokenService;
         private readonly IEventService _events;
         private readonly IResourceOwnerPasswordValidator _resourceOwnerValidator;
         private readonly IProfileService _profile;
@@ -52,6 +53,7 @@ namespace IdentityServer4.Validation
         /// <param name="resourceValidator">The resource validator.</param>
         /// <param name="resourceStore">The resource store.</param>
         /// <param name="tokenValidator">The token validator.</param>
+        /// <param name="refreshTokenService"></param>
         /// <param name="events">The events.</param>
         /// <param name="clock">The clock.</param>
         /// <param name="logger">The logger.</param>
@@ -65,6 +67,7 @@ namespace IdentityServer4.Validation
             IResourceValidator resourceValidator,
             IResourceStore resourceStore,
             ITokenValidator tokenValidator, 
+            IRefreshTokenService refreshTokenService,
             IEventService events, 
             ISystemClock clock, 
             ILogger<TokenRequestValidator> logger)
@@ -81,6 +84,7 @@ namespace IdentityServer4.Validation
             _resourceValidator = resourceValidator;
             _resourceStore = resourceStore;
             _tokenValidator = tokenValidator;
+            _refreshTokenService = refreshTokenService;
             _events = events;
         }
 
@@ -231,7 +235,18 @@ namespace IdentityServer4.Validation
                 LogError("Invalid authorization code", new { code });
                 return Invalid(OidcConstants.TokenErrors.InvalidGrant);
             }
+            
+            /////////////////////////////////////////////
+            // validate client binding
+            /////////////////////////////////////////////
+            if (authZcode.ClientId != _validatedRequest.Client.ClientId)
+            {
+                LogError("Client is trying to use a code from a different client", new { clientId = _validatedRequest.Client.ClientId, codeClient = authZcode.ClientId });
+                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
+            }
 
+            // remove code from store
+            // todo: set to consumed in the future?
             await _authorizationCodeStore.RemoveAuthorizationCodeAsync(code);
 
             if (authZcode.CreationTime.HasExceeded(authZcode.Lifetime, _clock.UtcNow.UtcDateTime))
@@ -246,15 +261,6 @@ namespace IdentityServer4.Validation
             if (authZcode.SessionId.IsPresent())
             {
                 _validatedRequest.SessionId = authZcode.SessionId;
-            }
-
-            /////////////////////////////////////////////
-            // validate client binding
-            /////////////////////////////////////////////
-            if (authZcode.ClientId != _validatedRequest.Client.ClientId)
-            {
-                LogError("Client is trying to use a code from a different client", new { clientId = _validatedRequest.Client.ClientId, codeClient = authZcode.ClientId });
-                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
             }
 
             /////////////////////////////////////////////
@@ -282,7 +288,7 @@ namespace IdentityServer4.Validation
             if (redirectUri.Equals(_validatedRequest.AuthorizationCode.RedirectUri, StringComparison.Ordinal) == false)
             {
                 LogError("Invalid redirect_uri", new { redirectUri, expectedRedirectUri = _validatedRequest.AuthorizationCode.RedirectUri });
-                return Invalid(OidcConstants.TokenErrors.UnauthorizedClient);
+                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
             }
 
             /////////////////////////////////////////////
@@ -436,7 +442,7 @@ namespace IdentityServer4.Validation
             if (resourceOwnerContext.Result.IsError)
             {
                 // protect against bad validator implementations
-                resourceOwnerContext.Result.Error = resourceOwnerContext.Result.Error ?? OidcConstants.TokenErrors.InvalidGrant;
+                resourceOwnerContext.Result.Error ??= OidcConstants.TokenErrors.InvalidGrant;
 
                 if (resourceOwnerContext.Result.Error == OidcConstants.TokenErrors.UnsupportedGrantType)
                 {
@@ -507,7 +513,7 @@ namespace IdentityServer4.Validation
                 return Invalid(OidcConstants.TokenErrors.InvalidGrant);
             }
 
-            var result = await _tokenValidator.ValidateRefreshTokenAsync(refreshTokenHandle, _validatedRequest.Client);
+            var result = await _refreshTokenService.ValidateRefreshTokenAsync(refreshTokenHandle, _validatedRequest.Client);
 
             if (result.IsError)
             {
@@ -520,13 +526,15 @@ namespace IdentityServer4.Validation
             _validatedRequest.Subject = result.RefreshToken.Subject;
 
             _logger.LogDebug("Validation of refresh token request success");
+            // todo: more logging - similar to TokenValidator before
+            
             return Valid();
         }
 
         private async Task<TokenRequestValidationResult> ValidateDeviceCodeRequestAsync(NameValueCollection parameters)
         {
             _logger.LogDebug("Start validation of device code request");
-            
+
             /////////////////////////////////////////////
             // check if client is authorized for grant type
             /////////////////////////////////////////////
@@ -559,7 +567,7 @@ namespace IdentityServer4.Validation
             await _deviceCodeValidator.ValidateAsync(deviceCodeContext);
 
             if (deviceCodeContext.Result.IsError) return deviceCodeContext.Result;
-            
+
             _logger.LogDebug("Validation of authorization code token request success");
 
             return Valid();
@@ -703,10 +711,9 @@ namespace IdentityServer4.Validation
                 return false;
             }
 
-            var parasedScopes = await _resourceValidator.ParseRequestedScopesAsync(requestedScopes);
             var resourceValidationResult = await _resourceValidator.ValidateRequestedResourcesAsync(new ResourceValidationRequest { 
                 Client = _validatedRequest.Client,
-                ParsedScopeValues = parasedScopes
+                Scopes = requestedScopes
             });
 
             if (!resourceValidationResult.Succeeded)
@@ -806,7 +813,7 @@ namespace IdentityServer4.Validation
 
         private void LogWithRequestDetails(LogLevel logLevel, string message = null, object values = null)
         {
-            var details = new TokenRequestValidationLog(_validatedRequest);
+            var details = new TokenRequestValidationLog(_validatedRequest, _options.Logging.TokenRequestSensitiveValuesFilter);
 
             if (message.IsPresent())
             {
@@ -820,7 +827,7 @@ namespace IdentityServer4.Validation
                     {
                         _logger.Log(logLevel, message + "{@values}, details: {@details}", values, details);
                     }
-                    
+
                 }
                 catch (Exception ex)
                 {
@@ -840,12 +847,12 @@ namespace IdentityServer4.Validation
 
         private Task RaiseSuccessfulResourceOwnerAuthenticationEventAsync(string userName, string subjectId, string clientId)
         {
-            return _events.RaiseAsync(new UserLoginSuccessEvent(userName, subjectId, null, false, clientId));
+            return _events.RaiseAsync(new UserLoginSuccessEvent(userName, subjectId, null, interactive: false, clientId));
         }
 
         private Task RaiseFailedResourceOwnerAuthenticationEventAsync(string userName, string error, string clientId)
         {
-            return _events.RaiseAsync(new UserLoginFailureEvent(userName, error, clientId: clientId));
+            return _events.RaiseAsync(new UserLoginFailureEvent(userName, error, interactive: false, clientId: clientId));
         }
     }
 }

@@ -3,7 +3,6 @@
 
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using IdentityServer4.Models;
 using IdentityServer4.Stores;
@@ -18,7 +17,7 @@ namespace IdentityServer4.Services
         private readonly IUserSession _session;
         private readonly IDeviceFlowCodeService _devices;
         private readonly IResourceStore _resourceStore;
-        private readonly IResourceValidator _resourceValidator;
+        private readonly IScopeParser _scopeParser;
         private readonly ILogger<DefaultDeviceFlowInteractionService> _logger;
 
         public DefaultDeviceFlowInteractionService(
@@ -26,14 +25,14 @@ namespace IdentityServer4.Services
             IUserSession session,
             IDeviceFlowCodeService devices,
             IResourceStore resourceStore,
-            IResourceValidator resourceValidator,
+            IScopeParser scopeParser,
             ILogger<DefaultDeviceFlowInteractionService> logger)
         {
             _clients = clients;
             _session = session;
             _devices = devices;
             _resourceStore = resourceStore;
-            _resourceValidator = resourceValidator;
+            _scopeParser = scopeParser;
             _logger = logger;
         }
 
@@ -45,8 +44,8 @@ namespace IdentityServer4.Services
             var client = await _clients.FindClientByIdAsync(deviceAuth.ClientId);
             if (client == null) return null;
 
-            var parsedScopes = await _resourceValidator.ParseRequestedScopesAsync(deviceAuth.RequestedScopes);
-            var validatedResources = await _resourceStore.CreateResourceValidationResult(parsedScopes);
+            var parsedScopesResult = _scopeParser.ParseScopeValues(deviceAuth.RequestedScopes);
+            var validatedResources = await _resourceStore.CreateResourceValidationResult(parsedScopesResult);
 
             return new DeviceFlowAuthorizationRequest
             {
@@ -68,9 +67,13 @@ namespace IdentityServer4.Services
 
             var subject = await _session.GetUserAsync();
             if (subject == null) return LogAndReturnError("No user present in device flow request", "Device authorization failure - no user found");
+            
+            var sid = await _session.GetSessionIdAsync();
 
             deviceAuth.IsAuthorized = true;
             deviceAuth.Subject = subject;
+            deviceAuth.SessionId = sid;
+            deviceAuth.Description = consent.Description;
             deviceAuth.AuthorizedScopes = consent.ScopesValuesConsented;
 
             // TODO: Device Flow - Record consent template

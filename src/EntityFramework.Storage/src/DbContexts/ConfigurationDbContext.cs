@@ -3,7 +3,6 @@
 
 
 using System;
-using System.Threading.Tasks;
 using IdentityServer4.EntityFramework.Entities;
 using IdentityServer4.EntityFramework.Extensions;
 using IdentityServer4.EntityFramework.Interfaces;
@@ -60,6 +59,14 @@ namespace IdentityServer4.EntityFramework.DbContexts
         /// The clients.
         /// </value>
         public DbSet<Client> Clients { get; set; }
+
+        /// <summary>
+        /// Gets or sets the clients' CORS origins.
+        /// </summary>
+        /// <value>
+        /// The clients CORS origins.
+        /// </value>
+        public DbSet<ClientCorsOrigin> ClientCorsOrigins { get; set; }
 
         /// <summary>
         /// Gets or sets the identity resources.

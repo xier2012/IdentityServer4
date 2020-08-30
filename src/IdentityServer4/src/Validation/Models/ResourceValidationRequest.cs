@@ -20,12 +20,12 @@ namespace IdentityServer4.Validation
         /// <summary>
         /// The requested scope values.
         /// </summary>
-        public IEnumerable<ParsedScopeValue> ParsedScopeValues { get; set; }
+        public IEnumerable<string> Scopes { get; set; }
 
-        /// <summary>
-        /// The requested resource indicators.
-        /// </summary>
-        // todo: add back when we support resource indicators
-        //public IEnumerable<string> ResourceIndicators { get; set; }
+        // /// <summary>
+        // /// The requested resource indicators.
+        // /// </summary>
+        //  todo: add back when we support resource indicators
+        // public IEnumerable<string> ResourceIndicators { get; set; }
     }
 }

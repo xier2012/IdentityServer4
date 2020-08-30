@@ -37,26 +37,33 @@ namespace IdentityServer4.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Gets all grants for a given subject ID.
-        /// </summary>
-        /// <param name="subjectId">The subject identifier.</param>
-        /// <returns></returns>
-        public async Task<IEnumerable<Consent>> GetAllGrantsAsync(string subjectId)
+        /// <inheritdoc/>
+        public async Task<IEnumerable<Grant>> GetAllGrantsAsync(string subjectId)
         {
-            var grants = (await _store.GetAllAsync(subjectId)).ToArray();
+            if (String.IsNullOrWhiteSpace(subjectId)) throw new ArgumentNullException(nameof(subjectId));
+            
+            var grants = (await _store.GetAllAsync(new PersistedGrantFilter { SubjectId = subjectId })).ToArray();
 
             try
             {
                 var consents = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.UserConsent)
-                    .Select(x => _serializer.Deserialize<Consent>(x.Data));
-
-                var codes = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.AuthorizationCode)
-                    .Select(x => _serializer.Deserialize<AuthorizationCode>(x.Data))
-                    .Select(x => new Consent
+                    .Select(x => _serializer.Deserialize<Consent>(x.Data))
+                    .Select(x => new Grant 
                     {
                         ClientId = x.ClientId,
                         SubjectId = subjectId,
+                        Scopes = x.Scopes,
+                        CreationTime = x.CreationTime,
+                        Expiration = x.Expiration
+                    });
+
+                var codes = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.AuthorizationCode)
+                    .Select(x => _serializer.Deserialize<AuthorizationCode>(x.Data))
+                    .Select(x => new Grant
+                    {
+                        ClientId = x.ClientId,
+                        SubjectId = subjectId,
+                        Description = x.Description,
                         Scopes = x.RequestedScopes,
                         CreationTime = x.CreationTime,
                         Expiration = x.CreationTime.AddSeconds(x.Lifetime)
@@ -64,10 +71,11 @@ namespace IdentityServer4.Services
 
                 var refresh = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.RefreshToken)
                     .Select(x => _serializer.Deserialize<RefreshToken>(x.Data))
-                    .Select(x => new Consent
+                    .Select(x => new Grant
                     {
                         ClientId = x.ClientId,
                         SubjectId = subjectId,
+                        Description = x.Description,
                         Scopes = x.Scopes,
                         CreationTime = x.CreationTime,
                         Expiration = x.CreationTime.AddSeconds(x.Lifetime)
@@ -75,10 +83,11 @@ namespace IdentityServer4.Services
 
                 var access = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.ReferenceToken)
                     .Select(x => _serializer.Deserialize<Token>(x.Data))
-                    .Select(x => new Consent
+                    .Select(x => new Grant
                     {
                         ClientId = x.ClientId,
                         SubjectId = subjectId,
+                        Description = x.Description,
                         Scopes = x.Scopes,
                         CreationTime = x.CreationTime,
                         Expiration = x.CreationTime.AddSeconds(x.Lifetime)
@@ -95,10 +104,10 @@ namespace IdentityServer4.Services
                 _logger.LogError(ex, "Failed processing results from grant store.");
             }
 
-            return Enumerable.Empty<Consent>();
+            return Enumerable.Empty<Grant>();
         }
 
-        private IEnumerable<Consent> Join(IEnumerable<Consent> first, IEnumerable<Consent> second)
+        private IEnumerable<Grant> Join(IEnumerable<Grant> first, IEnumerable<Grant> second)
         {
             var list = first.ToList();
 
@@ -125,6 +134,8 @@ namespace IdentityServer4.Services
                         // show the latest expiration
                         match.Expiration = other.Expiration;
                     }
+
+                    match.Description = match.Description ?? other.Description;
                 }
                 else
                 {
@@ -135,15 +146,16 @@ namespace IdentityServer4.Services
             return list;
         }
 
-        /// <summary>
-        /// Removes all grants for a given subject id and client id combination.
-        /// </summary>
-        /// <param name="subjectId">The subject identifier.</param>
-        /// <param name="clientId">The client identifier.</param>
-        /// <returns></returns>
-        public Task RemoveAllGrantsAsync(string subjectId, string clientId)
+        /// <inheritdoc/>
+        public Task RemoveAllGrantsAsync(string subjectId, string clientId = null, string sessionId = null)
         {
-            return _store.RemoveAllAsync(subjectId, clientId);
+            if (String.IsNullOrWhiteSpace(subjectId)) throw new ArgumentNullException(nameof(subjectId));
+
+            return _store.RemoveAllAsync(new PersistedGrantFilter {
+                SubjectId = subjectId,
+                ClientId = clientId,
+                SessionId = sessionId
+            });
         }
     }
 }

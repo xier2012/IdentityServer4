@@ -30,6 +30,14 @@ namespace IdentityServer4.Models
         public int Lifetime { get; set; }
 
         /// <summary>
+        /// Gets or sets the consumed time.
+        /// </summary>
+        /// <value>
+        /// The consumed time.
+        /// </value>
+        public DateTime? ConsumedTime { get; set; }
+
+        /// <summary>
         /// Gets or sets the access token.
         /// </summary>
         /// <value>
@@ -82,6 +90,22 @@ namespace IdentityServer4.Models
         /// The subject identifier.
         /// </value>
         public string SubjectId => AccessToken.SubjectId;
+
+        /// <summary>
+        /// Gets the session identifier.
+        /// </summary>
+        /// <value>
+        /// The session identifier.
+        /// </value>
+        public string SessionId => AccessToken.SessionId;
+
+        /// <summary>
+        /// Gets the description the user assigned to the device being authorized.
+        /// </summary>
+        /// <value>
+        /// The description.
+        /// </value>
+        public string Description => AccessToken.Description;
 
         /// <summary>
         /// Gets the scopes.

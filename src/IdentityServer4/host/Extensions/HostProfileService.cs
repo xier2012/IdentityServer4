@@ -1,10 +1,11 @@
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Models;
-using IdentityServer4.Services;
 using IdentityServer4.Test;
 using Microsoft.Extensions.Logging;
 
-namespace Host.Extensions
+namespace IdentityServerHost.Extensions
 {
     public class HostProfileService : TestUserProfileService
     {
@@ -12,14 +13,15 @@ namespace Host.Extensions
         {
         }
 
-        public override Task GetProfileDataAsync(ProfileDataRequestContext context)
+        public override async Task GetProfileDataAsync(ProfileDataRequestContext context)
         {
-            return base.GetProfileDataAsync(context);
-        }
+            await base.GetProfileDataAsync(context);
 
-        public override Task IsActiveAsync(IsActiveContext context)
-        {
-            return base.IsActiveAsync(context);
+            var transaction = context.RequestedResources.ParsedScopes.FirstOrDefault(x => x.ParsedName == "transaction");
+            if (transaction?.ParsedParameter != null)
+            {
+                context.IssuedClaims.Add(new Claim("transaction_id", transaction.ParsedParameter));
+            }
         }
     }
 }

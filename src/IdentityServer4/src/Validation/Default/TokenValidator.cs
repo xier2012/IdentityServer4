@@ -28,7 +28,6 @@ namespace IdentityServer4.Validation
         private readonly IdentityServerOptions _options;
         private readonly IHttpContextAccessor _context;
         private readonly IReferenceTokenStore _referenceTokenStore;
-        private readonly IRefreshTokenStore _refreshTokenStore;
         private readonly ICustomTokenValidator _customValidator;
         private readonly IClientStore _clients;
         private readonly IProfileService _profile;
@@ -53,7 +52,6 @@ namespace IdentityServer4.Validation
             _clients = clients;
             _profile = profile;
             _referenceTokenStore = referenceTokenStore;
-            _refreshTokenStore = refreshTokenStore;
             _customValidator = customValidator;
             _keys = keys;
             _clock = clock;
@@ -105,29 +103,6 @@ namespace IdentityServer4.Validation
             {
                 LogError("Error validating JWT");
                 return result;
-            }
-
-            _log.Claims = result.Claims.ToClaimsDictionary();
-
-            // make sure user is still active (if sub claim is present)
-            var subClaim = result.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Subject);
-            if (subClaim != null)
-            {
-                var principal = Principal.Create("tokenvalidator", result.Claims.ToArray());
-
-                var isActiveCtx = new IsActiveContext(principal, result.Client, IdentityServerConstants.ProfileIsActiveCallers.IdentityTokenValidation);
-                await _profile.IsActiveAsync(isActiveCtx);
-
-                if (isActiveCtx.IsActive == false)
-                {
-                    _logger.LogError("User marked as not active: {subject}", subClaim.Value);
-
-                    result.IsError = true;
-                    result.Error = OidcConstants.ProtectedResourceErrors.InvalidToken;
-                    result.Claims = null;
-
-                    return result;
-                }
             }
 
             _logger.LogDebug("Calling into custom token validator: {type}", _customValidator.GetType().FullName);
@@ -247,7 +222,7 @@ namespace IdentityServer4.Validation
                 var scope = result.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Scope && c.Value == expectedScope);
                 if (scope == null)
                 {
-                    LogError(string.Format("Checking for expected scope {0} failed", expectedScope));
+                    LogError($"Checking for expected scope {expectedScope} failed");
                     return Invalid(OidcConstants.ProtectedResourceErrors.InsufficientScope);
                 }
             }
@@ -277,7 +252,7 @@ namespace IdentityServer4.Validation
             {
                 ValidIssuer = _context.HttpContext.GetIdentityServerIssuerUri(),
                 IssuerSigningKeys = validationKeys.Select(k => k.Key),
-                ValidateLifetime = validateLifetime,
+                ValidateLifetime = validateLifetime
             };
 
             if (audience.IsPresent())
@@ -331,11 +306,32 @@ namespace IdentityServer4.Validation
                     }
                 }
 
+                var claims = id.Claims.ToList();
+                
+                // check the scope format (array vs space delimited string)
+                var scopes = claims.Where(c => c.Type == JwtClaimTypes.Scope).ToArray();
+                if (scopes.Any())
+                {
+                    foreach (var scope in scopes)
+                    {
+                        if (scope.Value.Contains(" "))
+                        {
+                            claims.Remove(scope);
+                            
+                            var values = scope.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var value in values)
+                            {
+                                claims.Add(new Claim(JwtClaimTypes.Scope, value));
+                            }
+                        }
+                    }
+                }
+
                 return new TokenValidationResult
                 {
                     IsError = false,
 
-                    Claims = id.Claims,
+                    Claims = claims,
                     Client = client,
                     Jwt = jwt
                 };
@@ -392,81 +388,6 @@ namespace IdentityServer4.Validation
                 Claims = ReferenceTokenToClaims(token),
                 ReferenceToken = token,
                 ReferenceTokenId = tokenHandle
-            };
-        }
-
-        public async Task<TokenValidationResult> ValidateRefreshTokenAsync(string tokenHandle, Client client = null)
-        {
-            _logger.LogTrace("Start refresh token validation");
-
-            /////////////////////////////////////////////
-            // check if refresh token is valid
-            /////////////////////////////////////////////
-            var refreshToken = await _refreshTokenStore.GetRefreshTokenAsync(tokenHandle);
-            if (refreshToken == null)
-            {
-                _logger.LogWarning("Invalid refresh token");
-                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
-            }
-
-            /////////////////////////////////////////////
-            // check if refresh token has expired
-            /////////////////////////////////////////////
-            if (refreshToken.CreationTime.HasExceeded(refreshToken.Lifetime, _clock.UtcNow.DateTime))
-            {
-                _logger.LogWarning("Refresh token has expired. Removing from store.");
-
-                await _refreshTokenStore.RemoveRefreshTokenAsync(tokenHandle);
-                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
-            }
-
-            if (client != null)
-            {
-                /////////////////////////////////////////////
-                // check if client belongs to requested refresh token
-                /////////////////////////////////////////////
-                if (client.ClientId != refreshToken.ClientId)
-                {
-                    _logger.LogError("{0} tries to refresh token belonging to {1}", client.ClientId, refreshToken.ClientId);
-                    return Invalid(OidcConstants.TokenErrors.InvalidGrant);
-                }
-
-                /////////////////////////////////////////////
-                // check if client still has offline_access scope
-                /////////////////////////////////////////////
-                if (!client.AllowOfflineAccess)
-                {
-                    _logger.LogError("{clientId} does not have access to offline_access scope anymore", client.ClientId);
-                    return Invalid(OidcConstants.TokenErrors.InvalidGrant);
-                }
-
-                _log.ClientId = client.ClientId;
-                _log.ClientName = client.ClientName;
-            }
-
-            /////////////////////////////////////////////
-            // make sure user is enabled
-            /////////////////////////////////////////////
-            var isActiveCtx = new IsActiveContext(
-                refreshToken.Subject,
-                client,
-                IdentityServerConstants.ProfileIsActiveCallers.RefreshTokenValidation);
-            await _profile.IsActiveAsync(isActiveCtx);
-
-            if (isActiveCtx.IsActive == false)
-            {
-                _logger.LogError("{subjectId} has been disabled", refreshToken.Subject.GetSubjectId());
-                return Invalid(OidcConstants.TokenErrors.InvalidGrant);
-            }
-
-            _log.Claims = refreshToken.Subject.Claims.ToClaimsDictionary();
-
-            LogSuccess();
-
-            return new TokenValidationResult
-            {
-                IsError = false,
-                RefreshToken = refreshToken
             };
         }
 

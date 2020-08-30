@@ -15,7 +15,7 @@ namespace IdentityServer4.Validation
     /// <summary>
     /// Validates secrets using the registered validators
     /// </summary>
-    public class SecretValidator
+    public class SecretValidator : ISecretsListValidator
     {
         private readonly ILogger _logger;
         private readonly IEnumerable<ISecretValidator> _validators;
@@ -27,7 +27,7 @@ namespace IdentityServer4.Validation
         /// <param name="clock">The clock.</param>
         /// <param name="validators">The validators.</param>
         /// <param name="logger">The logger.</param>
-        public SecretValidator(ISystemClock clock, IEnumerable<ISecretValidator> validators, ILogger<SecretValidator> logger)
+        public SecretValidator(ISystemClock clock, IEnumerable<ISecretValidator> validators, ILogger<ISecretsListValidator> logger)
         {
             _clock = clock;
             _validators = validators;
@@ -40,7 +40,7 @@ namespace IdentityServer4.Validation
         /// <param name="parsedSecret">The parsed secret.</param>
         /// <param name="secrets">The secrets.</param>
         /// <returns></returns>
-        public async Task<SecretValidationResult> ValidateAsync(ParsedSecret parsedSecret, IEnumerable<Secret> secrets)
+        public async Task<SecretValidationResult> ValidateAsync(IEnumerable<Secret> secrets, ParsedSecret parsedSecret)
         {
             var secretsArray = secrets as Secret[] ?? secrets.ToArray();
 
@@ -48,7 +48,7 @@ namespace IdentityServer4.Validation
             if (expiredSecrets.Any())
             {
                 expiredSecrets.ForEach(
-                    ex => _logger.LogWarning("Secret [{description}] is expired", ex.Description ?? "no description"));
+                    ex => _logger.LogInformation("Secret [{description}] is expired", ex.Description ?? "no description"));
             }
 
             var currentSecrets = secretsArray.Where(s => !s.Expiration.HasExpired(_clock.UtcNow.UtcDateTime)).ToArray();
